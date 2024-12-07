@@ -173,7 +173,8 @@ library(SpeciesPoolR)
 library(crew)
 ```
 
-After this we run with targets a modified version of our prior
+After this we run with targets a modified version of our prior workflow
+to include a precomputed lookup table instead of a modeled one
 
 ``` r
 targets::tar_option_set(
@@ -306,6 +307,10 @@ targets::tar_visnetwork()
 
 # 3 Biodiversity patterns
 
+This results in three estimations of biodiversity, Species Richness,
+Phylogenetic diversity and Rarity, next we will explore the results of
+this calculated metrics.
+
 ## 3.1 Species Richness
 
 ``` r
@@ -313,6 +318,9 @@ library(terra)
 library(tidyterra)
 library(ggplot2)
 ```
+
+In figure <a href="#fig:Richness">3.1</a> we see the patterns of species
+richness for all Habitats
 
 <div class="figure">
 
@@ -327,6 +335,22 @@ for each of the habitat types
 
 </div>
 
+In figure <a href="#fig:RichnessOWP">3.2</a> we see a more detail mode
+for open wet poor specifically to have a closer look at the details
+
+<div class="figure">
+
+<img src="README_files/figure-gfm/RichnessOWP-1.png" alt="Potential species richness for each Open Wet Rich"  />
+
+<p class="caption">
+
+<span id="fig:RichnessOWP"></span>Figure 3.2: Potential species richness
+for each Open Wet Rich
+
+</p>
+
+</div>
+
 ## 3.2 Phylogenetic diversity
 
 <div class="figure">
@@ -335,7 +359,7 @@ for each of the habitat types
 
 <p class="caption">
 
-<span id="fig:PD"></span>Figure 3.2: Potential phylogenetic diversity
+<span id="fig:PD"></span>Figure 3.3: Potential phylogenetic diversity
 for each of the habitat types
 
 </p>
@@ -350,7 +374,7 @@ for each of the habitat types
 
 <p class="caption">
 
-<span id="fig:Rarity"></span>Figure 3.3: Potential rarity for each of
+<span id="fig:Rarity"></span>Figure 3.4: Potential rarity for each of
 the habitat types
 
 </p>

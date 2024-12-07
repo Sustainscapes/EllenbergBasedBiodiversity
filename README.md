@@ -26,18 +26,22 @@ for this
 
 ## 1.1 Environmental Gradient Categorization:
 
-The averaged Ellenberg values are used to assign species into broad
-habitat categories based on thresholds:
+The Ellenberg values are used to assign species into broad habitat
+categories based on thresholds. For Light, species are categorized as
+belonging to “Forest” if the light value is less than 5, “Both” if the
+light value is between 5 (inclusive) and 8 (exclusive), and “Open” if
+the light value is 8 or higher. If the light value is missing, species
+are assigned to “Both.”
 
-- **Light**: Species are categorized as belonging to either “Forest”
-  (light \< 5), “Both” (\>= 5 and 8), “Open” (light \>= 8), or “Both” if
-  the light value is missing.
+For Nutrients, species are classified as “Poor” if the nutrients value
+is less than 5, “Both” if the nutrients value is between 5 (inclusive)
+and 8 (exclusive), and “Rich” if the nutrients value is 8 or higher. If
+the nutrients value is missing, species are assigned to “Both.”
 
-- **Nutrients**: Species are classified as “Rich” (nutrients \> 4),
-  “Poor” (nutrients ≤ 4), or “Both” if the nutrients value is missing.
-
-- **Moisture**: Species are labeled as “Wet” (moisture \> 4) , “Both”
-  4-8, “Dry” (moisture ≤ 4), or “Both” if the moisture value is missing.
+For Moisture, species are labeled as “Dry” if the moisture value is less
+than 4, “Both” if the moisture value is between 4 (inclusive) and 8
+(exclusive), and “Wet” if the moisture value is 8 or higher. If the
+moisture value is missing, species are assigned to “Both.”
 
 ## 1.2 Habitat Assignment:
 
@@ -174,68 +178,120 @@ After this we run with targets a modified version of our prior
 ``` r
 targets::tar_option_set(
   packages = c("SpeciesPoolR", "data.table"),
-  controller = crew::crew_controller_local(workers = 6), error = "null"
+  controller = crew::crew_controller_local(workers = 6),
+  error = "null"
 )
+
 list(
-  targets::tar_target(file, command = "EllembergTable.xlsx", format = "file"),
+  # Input file targets
+  targets::tar_target(file, "EllembergTable.xlsx", format = "file"),
   targets::tar_target(data, get_data(file, filter = NULL)),
-  targets::tar_target(shp, command = NULL, format = "file"),
-  targets::tar_target(Raster, command = "Dir/LU.tif", format = "file"),
-  targets::tar_target(Landusesuitability, "NewHabSut.tif",
-    format = "file"
-  ), targets::tar_target(Clean, SpeciesPoolR::Clean_Taxa(data$Species)),
-  targets::tar_target(Count_Presences, count_presences(Clean,
-    country = "DK", shapefile = shp
-  ), pattern = map(Clean)),
-  targets::tar_target(More_than_zero, Count_Presences[N > 0, ,
-    by = species, sum(N)
-  ]), targets::tar_target(Presences,
-    get_presences(More_than_zero$species,
+  targets::tar_target(shp, NULL, format = "file"),
+  targets::tar_target(Raster, "Dir/LU.tif", format = "file"),
+  targets::tar_target(Landusesuitability, "NewHabSut.tif", format = "file"),
+  
+  # Cleaning and processing data
+  targets::tar_target(Clean, SpeciesPoolR::Clean_Taxa(data$Species)),
+  targets::tar_target(
+    Count_Presences,
+    count_presences(Clean, country = "DK", shapefile = shp),
+    pattern = map(Clean)
+  ),
+  targets::tar_target(
+    More_than_zero,
+    Count_Presences[N > 0, , by = species, sum(N)]
+  ),
+  targets::tar_target(
+    Presences,
+    get_presences(
+      More_than_zero$species,
       country = "DK",
-      shapefile = shp, limit = 10000
+      shapefile = shp,
+      limit = 10000
     ),
     pattern = map(More_than_zero)
   ),
-  targets::tar_target(buffer, make_buffer_rasterized(
-    DT = Presences,
-    file = Raster, dist = 500
-  ), pattern = map(Presences)),
-  targets::tar_target(LookUpFile, command = "Lookup.csv", format = "file"),
+  
+  # Spatial processing
   targets::tar_target(
-    LookUpTable,
-    data.table::fread(LookUpFile)
+    buffer,
+    make_buffer_rasterized(DT = Presences, file = Raster, dist = 500),
+    pattern = map(Presences)
   ),
-  targets::tar_target(Long_LU_table, generate_long_landuse_table(path = Landusesuitability)),
-  targets::tar_target(Final_Presences, make_final_presences(
+  
+  # Lookup table
+  targets::tar_target(LookUpFile, "Lookup.csv", format = "file"),
+  targets::tar_target(LookUpTable, data.table::fread(LookUpFile)),
+  
+  # Land-use processing
+  targets::tar_target(
     Long_LU_table,
-    buffer, LookUpTable
-  )), targets::tar_target(
+    generate_long_landuse_table(path = Landusesuitability)
+  ),
+  targets::tar_target(
+    Final_Presences,
+    make_final_presences(Long_LU_table, buffer, LookUpTable)
+  ),
+  
+  # Summary targets
+  targets::tar_target(
     unique_species,
     unique(Final_Presences$species)
-  ), targets::tar_target(
+  ),
+  targets::tar_target(
     unique_habitats,
     unique(Final_Presences$Landuse)
-  ), targets::tar_target(export_presences,
-    export_final_presences(Final_Presences[species == unique_species, ], folder = "Field_Final_Presences"),
+  ),
+  
+  # Export processed data
+  targets::tar_target(
+    export_presences,
+    export_final_presences(
+      Final_Presences[species == unique_species, ],
+      folder = "Field_Final_Presences"
+    ),
     pattern = map(unique_species),
     format = "file"
-  ), targets::tar_target(Phylo_Tree, generate_tree(More_than_zero)),
+  ),
+  
+  # Phylogenetic and rarity calculations
+  targets::tar_target(Phylo_Tree, generate_tree(More_than_zero)),
   targets::tar_target(rarity_weight, calc_rarity_weight(More_than_zero)),
-  targets::tar_target(rarity, calc_rarity(Final_Presences[Landuse ==
-    unique_habitats, ], rarity_weight), pattern = map(unique_habitats)),
-  targets::tar_target(PhyloDiversity, calc_pd(Final_Presences[Landuse ==
-    unique_habitats, ], Phylo_Tree), pattern = map(unique_habitats)),
-  targets::tar_target(name = output_Rarity, command = export_rarity(
-    Results = rarity,
-    path = Raster
-  ), map(rarity), format = "file"), targets::tar_target(
-    name = output_Richness,
-    command = export_richness(Results = PhyloDiversity, path = Raster),
-    map(PhyloDiversity), format = "file"
-  ), targets::tar_target(
-    name = output_PD,
-    command = export_pd(Results = PhyloDiversity, path = Raster),
-    map(PhyloDiversity), format = "file"
+  targets::tar_target(
+    rarity,
+    calc_rarity(
+      Final_Presences[Landuse == unique_habitats, ],
+      rarity_weight
+    ),
+    pattern = map(unique_habitats)
+  ),
+  targets::tar_target(
+    PhyloDiversity,
+    calc_pd(
+      Final_Presences[Landuse == unique_habitats, ],
+      Phylo_Tree
+    ),
+    pattern = map(unique_habitats)
+  ),
+  
+  # Exporting results
+  targets::tar_target(
+    output_Rarity,
+    export_rarity(Results = rarity, path = Raster),
+    pattern = map(rarity),
+    format = "file"
+  ),
+  targets::tar_target(
+    output_Richness,
+    export_richness(Results = PhyloDiversity, path = Raster),
+    pattern = map(PhyloDiversity),
+    format = "file"
+  ),
+  targets::tar_target(
+    output_PD,
+    export_pd(Results = PhyloDiversity, path = Raster),
+    pattern = map(PhyloDiversity),
+    format = "file"
   )
 )
 ```

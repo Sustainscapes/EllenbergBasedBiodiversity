@@ -28,13 +28,11 @@ The goal of EllenbergBasedBiodiversity is to generate biodiversity metrics based
 
 ## Environmental Gradient Categorization:
 
-The averaged Ellenberg values are used to assign species into broad habitat categories based on thresholds:
-        
-* **Light**: Species are categorized as belonging to either "Forest" (light < 5), "Both" (>= 5 and 8), "Open" (light >= 8), or "Both" if the light value is missing.
+The Ellenberg values are used to assign species into broad habitat categories based on thresholds. For Light, species are categorized as belonging to "Forest" if the light value is less than 5, "Both" if the light value is between 5 (inclusive) and 8 (exclusive), and "Open" if the light value is 8 or higher. If the light value is missing, species are assigned to "Both."
 
-* **Nutrients**: Species are classified as "Rich" (nutrients > 4), "Poor" (nutrients ≤ 4), or "Both" if the nutrients value is missing.
+For Nutrients, species are classified as "Poor" if the nutrients value is less than 5, "Both" if the nutrients value is between 5 (inclusive) and 8 (exclusive), and "Rich" if the nutrients value is 8 or higher. If the nutrients value is missing, species are assigned to "Both."
 
-* **Moisture**: Species are labeled as "Wet" (moisture > 4) , "Both" 4-8, "Dry" (moisture ≤ 4), or "Both" if the moisture value is missing.
+For Moisture, species are labeled as "Dry" if the moisture value is less than 4, "Both" if the moisture value is between 4 (inclusive) and 8 (exclusive), and "Wet" if the moisture value is 8 or higher. If the moisture value is missing, species are assigned to "Both."
 
 ## Habitat Assignment:
 
